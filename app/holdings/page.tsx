@@ -44,7 +44,7 @@ export default function HoldingsPage() {
 
       {/* 内容 */}
       {loading ? (
-        <p className="text-gray-500">
+        <p className="text-gray-700">
           加载中...
         </p>
       ) : (
@@ -123,7 +123,7 @@ export default function HoldingsPage() {
                         📉 风险较大
                       </span>
                     ) : (
-                      <span className="text-gray-600">
+                      <span className="text-gray-800">
                         ⚖ 正常波动
                       </span>
                     )}

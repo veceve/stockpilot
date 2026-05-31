@@ -182,7 +182,7 @@ export default function PlansPage() {
               const diff = current - target;
 
               let status = "正常";
-              let color = "text-gray-600";
+              let color = "text-gray-800";
 
               if (diff < 0) {
                 status = `⬇ 低配 ${Math.abs(diff)}股`;

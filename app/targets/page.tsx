@@ -179,7 +179,7 @@ export default function TargetsPage() {
               const price = quote?.price || 0;
 
               let signal = "📊 观望";
-              let color = "text-gray-600";
+              let color = "text-gray-800";
 
               if (t.buy_price && price <= t.buy_price) {
                 signal = "📉 可买入";
