@@ -85,7 +85,7 @@ export default function TradesPage() {
   }, []);
 
   return (
-    <main className="bg-gray-50 min-h-screen p-6">
+    <main className="bg-gray-50 min-h-screen p-4 text-gray-900">
 
       {/* 标题 */}
       <h1 className="text-2xl font-bold mb-4">
