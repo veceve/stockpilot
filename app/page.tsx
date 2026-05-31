@@ -90,7 +90,7 @@ export default function Home() {
                   const isProfit = profit >= 0;
 
                   // 状态颜色优化（保留你的 status）
-                  let statusColor = "text-gray-600";
+                  let statusColor = "text-gray-800";
 
                   if (profit > 5) statusColor = "text-green-600";
                   if (profit < -5) statusColor = "text-red-600";
