@@ -1,7 +1,7 @@
 "use client";
 
+import Navbar from "@/components/Navbar";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 export default function Home() {
   const [data, setData] = useState<any>(null);
@@ -24,16 +24,10 @@ export default function Home() {
         📊 StockPilot Control Center
       </h1>
 
-      {/* 导航 */}
-      <div className="mb-6 space-x-2 text-sm">
-        <Link href="/" className="text-blue-600">Dashboard</Link>
-        <Link href="/plans" className="text-blue-600">仓位</Link>
-        <Link href="/targets" className="text-blue-600">目标价</Link>
-        <Link href="/journal" className="text-blue-600">日志</Link>
-      </div>
+      <Navbar />
 
       {!data ? (
-        <p>加载中...</p>
+        <p className="text-gray-500">加载中...</p>
       ) : (
         <>
           {/* 总览卡片 */}
@@ -42,14 +36,14 @@ export default function Home() {
             <div className="bg-white p-4 rounded-xl shadow">
               <p className="text-gray-500">总资产</p>
               <p className="text-xl font-bold">
-                ${data.totalValue.toFixed(2)}
+                ${Number(data.totalValue || 0).toFixed(2)}
               </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow">
               <p className="text-gray-500">持仓数</p>
               <p className="text-xl font-bold">
-                {data.list.length}
+                {data.list?.length || 0}
               </p>
             </div>
 
@@ -91,31 +85,55 @@ export default function Home() {
               </thead>
 
               <tbody>
-                {data.list.map((i: any) => (
-                  <tr
-                    key={i.symbol}
-                    className="border-t hover:bg-gray-50"
-                  >
-                    <td className="p-3 font-medium">
-                      {i.symbol}
-                    </td>
-                    <td className="p-3">
-                      {i.shares}
-                    </td>
-                    <td className="p-3">
-                      ${i.avgCost.toFixed(2)}
-                    </td>
-                    <td className="p-3">
-                      ${i.price.toFixed(2)}
-                    </td>
-                    <td className="p-3 text-green-600">
-                      {i.profitPercent.toFixed(2)}%
-                    </td>
-                    <td className="p-3">
-                      {i.status}
-                    </td>
-                  </tr>
-                ))}
+                {data.list?.map((i: any) => {
+                  const profit = Number(i.profitPercent || 0);
+                  const isProfit = profit >= 0;
+
+                  // 状态颜色优化（保留你的 status）
+                  let statusColor = "text-gray-600";
+
+                  if (profit > 5) statusColor = "text-green-600";
+                  if (profit < -5) statusColor = "text-red-600";
+
+                  return (
+                    <tr
+                      key={i.symbol}
+                      className="border-t hover:bg-gray-50"
+                    >
+                      <td className="p-3 font-medium">
+                        {i.symbol}
+                      </td>
+
+                      <td className="p-3">
+                        {i.shares}
+                      </td>
+
+                      <td className="p-3">
+                        ${Number(i.avgCost || 0).toFixed(2)}
+                      </td>
+
+                      <td className="p-3">
+                        ${Number(i.price || 0).toFixed(2)}
+                      </td>
+
+                      {/* ✅ 收益红绿修复 */}
+                      <td
+                        className={`p-3 font-semibold ${
+                          isProfit
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {profit.toFixed(2)}%
+                      </td>
+
+                      {/* 状态动态颜色（不丢你原字段） */}
+                      <td className={`p-3 ${statusColor}`}>
+                        {i.status}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 

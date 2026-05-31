@@ -1,325 +1,140 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import Navbar from "@/components/Navbar";
 
-type Trade = {
-  id: number;
-  symbol: string;
-  trade_type: string;
-  shares: number;
-  price: number;
-};
-
-type Position = {
+type Holding = {
   symbol: string;
   shares: number;
+  cost: number;
   avgCost: number;
-  
-  currentPrice?: number;
-  marketValue?: number;
-  profit?: number;
-  profitPercent?: number;
+  price: number;
+  marketValue: number;
+  profitPercent: number;
 };
 
 export default function HoldingsPage() {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [symbol, setSymbol] = useState("");
-  const [shares, setShares] = useState("");
-  const [price, setPrice] = useState("");
-  
-  async function loadQuotes(
-  positionsData: Position[]
-) {
-  const updated =
-    await Promise.all(
-      positionsData.map(
-        async (position) => {
-          const quote =
-            await fetch(
-              `/api/quote?symbol=${position.symbol}`
-            );
+  async function loadHoldings() {
+    setLoading(true);
 
-          const data =
-            await quote.json();
+    const res = await fetch("/api/dashboard");
+    const data = await res.json();
 
-          const currentPrice =
-            Number(data.c);
-
-          const marketValue =
-            currentPrice *
-            position.shares;
-
-          const costValue =
-            position.avgCost *
-            position.shares;
-
-          const profit =
-            marketValue -
-            costValue;
-
-          const profitPercent =
-            (profit /
-              costValue) *
-            100;
-
-          return {
-            ...position,
-            currentPrice,
-            marketValue,
-            profit,
-            profitPercent,
-          };
-        }
-      )
-    );
-
-  setPositions(updated);
-}
-  async function loadTrades() {
-    const { data, error } = await supabase
-      .from("trades")
-      .select("*")
-      .order("id", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    if (data) {
-      setTrades(data);
-      calculatePositions(data);
-    }
-  }
-
-  function calculatePositions(data: Trade[]) {
-    const map: Record<
-      string,
-      {
-        shares: number;
-        totalCost: number;
-      }
-    > = {};
-
-    data.forEach((trade) => {
-      if (!map[trade.symbol]) {
-        map[trade.symbol] = {
-          shares: 0,
-          totalCost: 0,
-        };
-      }
-
-      if (trade.trade_type === "BUY") {
-        map[trade.symbol].shares += Number(
-          trade.shares
-        );
-
-        map[trade.symbol].totalCost +=
-          Number(trade.shares) *
-          Number(trade.price);
-      }
-    });
-
-    const result: Position[] =
-      Object.entries(map).map(
-        ([symbol, value]) => ({
-          symbol,
-          shares: value.shares,
-          avgCost:
-            value.totalCost /
-            value.shares,
-        })
-      );
-
-    loadQuotes(result);
-  }
-
-  async function addTrade() {
-    if (!symbol || !shares || !price)
-      return;
-
-    const { error } = await supabase
-      .from("trades")
-      .insert({
-        symbol: symbol.toUpperCase(),
-        trade_type: "BUY",
-        shares: Number(shares),
-        price: Number(price),
-        trade_date:
-          new Date()
-            .toISOString()
-            .split("T")[0],
-      });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setSymbol("");
-    setShares("");
-    setPrice("");
-
-    loadTrades();
+    setHoldings(data.list || []);
+    setLoading(false);
   }
 
   useEffect(() => {
-    loadTrades();
+    loadHoldings();
   }, []);
 
   return (
-    <main style={{ padding: 30 }}>
-      <h1>💰 持仓管理</h1>
+    <main className="bg-gray-50 min-h-screen p-6">
 
-      <hr />
+      {/* 标题 */}
+      <h1 className="text-2xl font-bold mb-4">
+        📦 持仓管理
+      </h1>
 
-      <h2>新增买入记录</h2>
+      {/* 导航 */}
+      <Navbar />
 
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "20px",
-        }}
-      >
-        <input
-          placeholder="股票代码"
-          value={symbol}
-          onChange={(e) =>
-            setSymbol(e.target.value)
-          }
-        />
+      {/* 内容 */}
+      {loading ? (
+        <p className="text-gray-500">
+          加载中...
+        </p>
+      ) : (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
 
-        <input
-          placeholder="数量"
-          value={shares}
-          onChange={(e) =>
-            setShares(e.target.value)
-          }
-        />
+          {/* 表头 */}
+          <div className="p-4 border-b">
+            <h2 className="font-bold">
+              当前持仓
+            </h2>
+          </div>
 
-        <input
-          placeholder="价格"
-          value={price}
-          onChange={(e) =>
-            setPrice(e.target.value)
-          }
-        />
-
-        <button onClick={addTrade}>
-          买入
-        </button>
-      </div>
-
-      <hr />
-
-      <h2>📊 当前持仓</h2>
-
-      <table
-        border={1}
-        cellPadding={10}
-        style={{
-          borderCollapse: "collapse",
-          marginBottom: "30px",
-        }}
-      >
-        <thead>
-          <tr>
-            <th>股票</th>
-<th>持仓</th>
-<th>成本</th>
-<th>现价</th>
-<th>市值</th>
-<th>浮盈亏</th>
-<th>收益率</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {positions.map(
-            (position) => (
-              <tr
-                key={position.symbol}
-              >
-                <td>{position.symbol}</td>
-
-<td>{position.shares}</td>
-
-<td>
-  $
-  {position.avgCost.toFixed(2)}
-</td>
-
-<td>
-  $
-  {position.currentPrice?.toFixed(
-    2
-  ) ?? "-"}
-</td>
-
-<td>
-  $
-  {position.marketValue?.toFixed(
-    2
-  ) ?? "-"}
-</td>
-
-<td>
-  $
-  {position.profit?.toFixed(
-    2
-  ) ?? "-"}
-</td>
-
-<td>
-  {position.profitPercent?.toFixed(
-    2
-  ) ?? "-"}
-  %
-</td>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="p-3">股票</th>
+                <th className="p-3">股数</th>
+                <th className="p-3">成本价</th>
+                <th className="p-3">现价</th>
+                <th className="p-3">市值</th>
+                <th className="p-3">盈亏</th>
+                <th className="p-3">状态</th>
               </tr>
-            )
-          )}
-        </tbody>
-      </table>
+            </thead>
 
-      <h2>📜 交易记录</h2>
+            <tbody>
+              {holdings.map((h) => (
+                <tr
+                  key={h.symbol}
+                  className="border-t hover:bg-gray-50"
+                >
+                  {/* 股票 */}
+                  <td className="p-3 font-medium">
+                    {h.symbol}
+                  </td>
 
-      <table
-        border={1}
-        cellPadding={10}
-        style={{
-          borderCollapse: "collapse",
-        }}
-      >
-        <thead>
-          <tr>
-            <th>股票</th>
-            <th>类型</th>
-            <th>数量</th>
-            <th>价格</th>
-          </tr>
-        </thead>
+                  {/* 股数 */}
+                  <td className="p-3">
+                    {h.shares}
+                  </td>
 
-        <tbody>
-          {trades.map((trade) => (
-            <tr key={trade.id}>
-              <td>{trade.symbol}</td>
+                  {/* 成本 */}
+                  <td className="p-3">
+                    ${h.avgCost.toFixed(2)}
+                  </td>
 
-              <td>
-                {trade.trade_type}
-              </td>
+                  {/* 现价 */}
+                  <td className="p-3">
+                    ${h.price.toFixed(2)}
+                  </td>
 
-              <td>{trade.shares}</td>
+                  {/* 市值 */}
+                  <td className="p-3">
+                    ${h.marketValue.toFixed(2)}
+                  </td>
 
-              <td>${trade.price}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  {/* 盈亏 */}
+                  <td
+                    className={`p-3 font-semibold ${
+                      h.profitPercent >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {h.profitPercent.toFixed(2)}%
+                  </td>
+
+                  {/* 状态 */}
+                  <td className="p-3">
+                    {h.profitPercent > 10 ? (
+                      <span className="text-green-600">
+                        📈 强势盈利
+                      </span>
+                    ) : h.profitPercent < -10 ? (
+                      <span className="text-red-600">
+                        📉 风险较大
+                      </span>
+                    ) : (
+                      <span className="text-gray-600">
+                        ⚖ 正常波动
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+        </div>
+      )}
     </main>
   );
 }

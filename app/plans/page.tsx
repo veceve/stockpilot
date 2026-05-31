@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import Navbar from "@/components/Navbar";
+import { supabase } from "@/lib/supabase";
 
 type Plan = {
   id: number;
   symbol: string;
-  target_shares: number | null;
+  target_shares: number;
 };
 
 type Holding = {
@@ -21,7 +22,7 @@ export default function PlansPage() {
   const [symbol, setSymbol] = useState("");
   const [targetShares, setTargetShares] = useState("");
 
-  // 加载仓位目标
+  // 📦 加载目标仓位
   async function loadPlans() {
     const { data, error } = await supabase
       .from("position_plans")
@@ -32,10 +33,11 @@ export default function PlansPage() {
       console.error(error);
       return;
     }
-    if (data) setPlans(data);
+
+    setPlans(data || []);
   }
 
-  // 加载当前持仓（trades聚合）
+  // 📊 从 trades 计算当前持仓
   async function loadHoldings() {
     const { data: trades, error } = await supabase
       .from("trades")
@@ -52,6 +54,7 @@ export default function PlansPage() {
       if (!map[t.symbol]) {
         map[t.symbol] = { symbol: t.symbol, shares: 0 };
       }
+
       if (t.trade_type === "BUY") {
         map[t.symbol].shares += Number(t.shares);
       } else if (t.trade_type === "SELL") {
@@ -62,15 +65,15 @@ export default function PlansPage() {
     setHoldings(map);
   }
 
-  // 保存仓位目标
+  // 💾 保存目标仓位
   async function savePlan() {
-    if (!symbol) return;
+    if (!symbol || !targetShares) return;
 
     const { error } = await supabase
       .from("position_plans")
       .upsert({
         symbol: symbol.toUpperCase(),
-        target_shares: targetShares ? Number(targetShares) : null,
+        target_shares: Number(targetShares),
       });
 
     if (error) {
@@ -80,10 +83,11 @@ export default function PlansPage() {
 
     setSymbol("");
     setTargetShares("");
+
     loadPlans();
   }
 
-  // 删除仓位目标
+  // 🗑 删除目标
   async function deletePlan(id: number) {
     const { error } = await supabase
       .from("position_plans")
@@ -94,6 +98,7 @@ export default function PlansPage() {
       console.error(error);
       return;
     }
+
     loadPlans();
   }
 
@@ -104,80 +109,118 @@ export default function PlansPage() {
 
   return (
     <main className="bg-gray-50 min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-4">⚖️ 仓位管理</h1>
+
+      {/* 标题 */}
+      <h1 className="text-2xl font-bold mb-4">
+        ⚖️ 仓位管理（股数目标）
+      </h1>
+
+      {/* 导航 */}
+      <Navbar />
 
       {/* 输入区域 */}
-      <div className="mb-6 flex flex-wrap gap-2 items-center">
-        <input
-          className="border border-gray-300 rounded px-2 py-1"
-          placeholder="股票代码 (如 NVDA)"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-        />
-        <input
-          className="border border-gray-300 rounded px-2 py-1"
-          placeholder="目标股数"
-          value={targetShares}
-          onChange={(e) => setTargetShares(e.target.value)}
-        />
-        <button
-          className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600"
-          onClick={savePlan}
-        >
-          保存
-        </button>
+      <div className="bg-white rounded-xl shadow p-4 mb-6">
+
+        <div className="flex flex-wrap gap-2 items-center">
+
+          {/* 股票 */}
+          <input
+            className="border rounded px-3 py-2"
+            placeholder="股票代码 (如 NVDA)"
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+          />
+
+          {/* 目标股数 */}
+          <input
+            className="border rounded px-3 py-2"
+            placeholder="目标股数"
+            value={targetShares}
+            onChange={(e) =>
+              setTargetShares(e.target.value)
+            }
+          />
+
+          {/* 保存 */}
+          <button
+            onClick={savePlan}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            保存目标
+          </button>
+
+        </div>
       </div>
 
-      {/* 仓位列表 */}
+      {/* 表格 */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
+
         <div className="p-4 border-b">
-          <h2 className="font-bold">📋 仓位目标列表</h2>
+          <h2 className="font-bold">
+            📋 仓位目标对比
+          </h2>
         </div>
 
         <table className="w-full text-sm">
+
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="p-3">股票</th>
               <th className="p-3">目标股数</th>
               <th className="p-3">当前持仓</th>
+              <th className="p-3">差值</th>
               <th className="p-3">状态</th>
               <th className="p-3">操作</th>
             </tr>
           </thead>
 
           <tbody>
-            {plans.map((plan) => {
-              const holding = holdings[plan.symbol];
-              const currentShares = holding ? holding.shares : 0;
-              const targetSharesNum = plan.target_shares || 0;
-              const diff = currentShares - targetSharesNum;
+            {plans.map((p) => {
+              const holding = holdings[p.symbol];
+              const current = holding ? holding.shares : 0;
+              const target = p.target_shares;
+              const diff = current - target;
 
               let status = "正常";
-              let colorClass = "text-gray-600";
+              let color = "text-gray-600";
 
               if (diff < 0) {
-                status = `低配 ${-diff}股`;
-                colorClass = "text-green-600";
+                status = `⬇ 低配 ${Math.abs(diff)}股`;
+                color = "text-green-600";
               } else if (diff > 0) {
-                status = `超配 ${diff}股`;
-                colorClass = "text-red-600";
+                status = `⚠ 超配 ${diff}股`;
+                color = "text-red-600";
               }
 
               return (
                 <tr
-                  key={plan.id}
+                  key={p.id}
                   className="border-t hover:bg-gray-50"
                 >
-                  <td className="p-3 font-medium">{plan.symbol}</td>
-                  <td className="p-3">{targetSharesNum}</td>
-                  <td className="p-3">{currentShares}</td>
-                  <td className={`p-3 font-semibold ${colorClass}`}>
+                  <td className="p-3 font-medium">
+                    {p.symbol}
+                  </td>
+
+                  <td className="p-3">
+                    {target}
+                  </td>
+
+                  <td className="p-3">
+                    {current}
+                  </td>
+
+                  <td className="p-3">
+                    {diff}
+                  </td>
+
+                  <td className={`p-3 font-semibold ${color}`}>
                     {status}
                   </td>
+
                   <td className="p-3">
                     <button
-                      className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                      onClick={() => deletePlan(plan.id)}
+                      onClick={() => deletePlan(p.id)}
+                      className="text-red-600 hover:text-red-800"
                     >
                       删除
                     </button>
@@ -186,7 +229,9 @@ export default function PlansPage() {
               );
             })}
           </tbody>
+
         </table>
+
       </div>
     </main>
   );
