@@ -27,35 +27,35 @@ export default function Home() {
       <Navbar />
 
       {!data ? (
-        <p className="text-gray-500">加载中...</p>
+        <p className="text-gray-700">加载中...</p>
       ) : (
         <>
           {/* 总览卡片 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 
             <div className="bg-white p-4 rounded-xl shadow">
-              <p className="text-gray-500">总资产</p>
+              <p className="text-gray-700">总资产</p>
               <p className="text-xl font-bold">
                 ${Number(data.totalValue || 0).toFixed(2)}
               </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow">
-              <p className="text-gray-500">持仓数</p>
+              <p className="text-gray-700">持仓数</p>
               <p className="text-xl font-bold">
                 {data.list?.length || 0}
               </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow">
-              <p className="text-gray-500">状态</p>
+              <p className="text-gray-700">状态</p>
               <p className="text-xl font-bold text-blue-600">
                 运行中
               </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow">
-              <p className="text-gray-500">风险</p>
+              <p className="text-gray-700">风险</p>
               <p className="text-xl font-bold text-green-600">
                 已监控
               </p>
